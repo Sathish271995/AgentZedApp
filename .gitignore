@@ -1,32 +1,10 @@
-# ── Secrets ───────────────────────────────────────────────────────────────────
-.env
-*.env
-
-# ── Python ────────────────────────────────────────────────────────────────────
+```
 __pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-.Python
-*.egg-info/
-dist/
-build/
-.pytest_cache/
-.mypy_cache/
-
-# ── Virtual environment ───────────────────────────────────────────────────────
-agent_zed/backend/env/
+*.pyc
 venv/
 .venv/
-env/
-
-# ── Node / Frontend ───────────────────────────────────────────────────────────
-node_modules/
-agent_zed/frontend/dist/
-agent_zed/frontend/.env
-
-# ── IDE / OS ──────────────────────────────────────────────────────────────────
+backend/.env
+frontend/node_modules/
+frontend/dist/
+*.egg-info/
 .vscode/
-.idea/
-*.DS_Store
-Thumbs.db
