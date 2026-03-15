@@ -1,0 +1,26 @@
+{
+  "upcoming_releases": [
+    {
+      "date": "2025-05-01",
+      "version": "v2.4.0",
+      "services": ["payment", "payments", "validator"],
+      "owner": "Release Manager",
+      "description": "Q2 Payment Platform Release"
+    },
+    {
+      "date": "2025-05-15",
+      "version": "v2.4.1",
+      "services": ["auth", "user", "token"],
+      "owner": "Security Team",
+      "description": "Security hardening"
+    },
+    {
+      "date": "2025-06-01",
+      "version": "v2.5.0",
+      "services": ["order", "notification"],
+      "owner": "Release Manager",
+      "description": "Orders overhaul"
+    }
+  ],
+  "freeze_windows": []
+}

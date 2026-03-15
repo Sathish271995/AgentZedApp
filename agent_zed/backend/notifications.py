@@ -1,0 +1,141 @@
+import html as html_mod
+import json
+import logging
+import os
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+from dotenv import load_dotenv
+
+load_dotenv()
+logger = logging.getLogger("notifications")
+
+DEFAULT_EMAIL_MAP = {
+    "Payments Team":  "payments@yourco.com",
+    "QA Payments":    "qa@yourco.com",
+    "Platform Team":  "platform@yourco.com",
+    "Release Manager":"release@yourco.com",
+    "Security Team":  "security@yourco.com",
+    "Backend Team":   "backend@yourco.com",
+    "DBA Team":       "dba@yourco.com",
+    "QA Lead":        "qalead@yourco.com",
+    "Orders Team":    "orders@yourco.com",
+    "DevOps Team":    "devops@yourco.com",
+    "Frontend Team":  "frontend@yourco.com",
+}
+
+
+def send_team_notifications(result: dict) -> list:
+    ia    = result.get("Impact Analysis", {})
+    ri    = result.get("Release Intelligence", {})
+    rv    = result.get("PR Review", {})
+    teams = list(set(
+        ia.get("impacted_teams", []) + ri.get("suggested_stakeholders", [])
+    ))
+
+    try:
+        emap = json.loads(os.getenv("NOTIFY_EMAIL_MAP", "{}"))
+    except Exception:
+        emap = {}
+    emap = {**DEFAULT_EMAIL_MAP, **emap}
+
+    smtp_user = os.getenv("SMTP_USER", "")
+    smtp_pass = os.getenv("SMTP_PASS", "")
+    smtp_host = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    smtp_port = int(os.getenv("SMTP_PORT", "587"))
+
+    notified = []
+    for team in teams:
+        email = emap.get(team)
+        if not email:
+            logger.info(f"  📧 {team}: no email configured")
+            notified.append({"team": team, "status": "no_email"})
+            continue
+
+        # Warn when using placeholder addresses
+        if email.endswith("@yourco.com"):
+            logger.warning(
+                f"  ⚠️  {team} email is still a placeholder ({email}) — "
+                "set NOTIFY_EMAIL_MAP in .env"
+            )
+
+        subject = (
+            f"[Agent Zed] PR #{result.get('pr_id')} "
+            f"{result.get('event_type', '').upper()} — "
+            f"{result.get('title', '')}"
+        )
+        body   = _build_html(result, team, rv, ia, ri)
+        status = _send_email(smtp_host, smtp_port, smtp_user, smtp_pass, smtp_user, email, subject, body)
+        notified.append({"team": team, "email": email, "status": status})
+        logger.info(f"  📧 {team} → {email} → {status}")
+
+    return notified
+
+
+def _send_email(host, port, user, pw, from_addr, to_addr, subject, body) -> str:
+    if not user or not pw:
+        return "skipped_no_smtp"
+    for attempt in range(2):          # one retry on transient failure
+        try:
+            msg = MIMEMultipart("alternative")
+            msg["Subject"] = subject
+            msg["From"]    = from_addr
+            msg["To"]      = to_addr
+            msg.attach(MIMEText(body, "html"))
+            with smtplib.SMTP(host, port, timeout=10) as s:
+                s.ehlo()
+                s.starttls()
+                s.login(user, pw)
+                s.sendmail(from_addr, to_addr, msg.as_string())
+            return "sent"
+        except Exception as exc:
+            if attempt == 1:
+                return f"failed:{exc}"
+    return "failed"
+
+
+def _esc(value) -> str:
+    """HTML-escape any user-supplied string before injecting into email body."""
+    return html_mod.escape(str(value or ""))
+
+
+def _build_html(result, team, rv, ia, ri) -> str:
+    risk  = rv.get("risk_level", "Unknown")
+    color = {"High": "#e53e3e", "Medium": "#dd6b20", "Low": "#38a169"}.get(risk, "#718096")
+
+    files_html = "".join(
+        f"<li><code>{_esc(f)}</code></li>"
+        for f in result.get("files_changed", [])
+    )
+    teams_html = "".join(
+        f"<li>{_esc(t)}</li>"
+        for t in ia.get("impacted_teams", [])
+    )
+
+    return f"""<html><body style="font-family:Arial,sans-serif;max-width:620px;margin:auto;">
+<div style="background:#1a202c;padding:20px;border-radius:8px 8px 0 0;">
+  <h2 style="color:#fff;margin:0;">Agent Zed — PR Intelligence</h2>
+</div>
+<div style="background:#f7fafc;padding:24px;border:1px solid #e2e8f0;">
+  <p><b>PR #{_esc(result.get('pr_id'))}</b>: {_esc(result.get('title'))}</p>
+  <p>Author: {_esc(result.get('author'))} | Event: {_esc(result.get('event_type','').upper())}</p>
+  <p>Risk:
+    <span style="background:{color};color:#fff;padding:2px 10px;border-radius:10px;font-size:13px;">
+      {_esc(risk)}
+    </span>
+  </p>
+  <h3>Files Changed</h3><ul>{files_html}</ul>
+  <h3>Impacted Teams</h3><ul>{teams_html}</ul>
+  <h3>Precaution</h3><p>{_esc(ri.get('precaution',''))}</p>
+  <p style="margin-top:20px;">
+    <a href="{_esc(result.get('pr_url','#'))}"
+       style="background:#4c51bf;color:#fff;padding:10px 20px;border-radius:6px;text-decoration:none;">
+      View PR on GitHub &rarr;
+    </a>
+  </p>
+</div>
+<div style="background:#edf2f7;padding:12px;text-align:center;font-size:12px;color:#718096;">
+  Generated by Agent Zed AI | Notified: {_esc(team)}
+</div>
+</body></html>"""
