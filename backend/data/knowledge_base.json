@@ -1,1 +1,28 @@
-[]
+[
+  {
+    "pr_id": "PR-121",
+    "title": "Add payment CRUD API with validation",
+    "files": [
+      "routers/payments.py",
+      "database.py"
+    ],
+    "decision": "The decision is to implement a payment CRUD API with robust validation to ensure data integrity and security.",
+    "patterns": [
+      "CRUD API design",
+      "Input validation techniques"
+    ]
+  },
+  {
+    "pr_id": "6",
+    "title": "Feature/payment crud api new",
+    "files": [
+      "routers/payments.py",
+      "database.py"
+    ],
+    "decision": "The decision is to implement a payment CRUD API with robust validation.",
+    "patterns": [
+      "Implementing CRUD operations for payment processing",
+      "Ensuring data validation and security in payment APIs"
+    ]
+  }
+]

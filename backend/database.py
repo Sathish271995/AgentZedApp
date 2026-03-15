@@ -5,7 +5,7 @@ load_dotenv()
 
 def get_conn():
     return psycopg2.connect(
-        os.getenv("DATABASE_URL","postgresql://postgres:admin123@localhost:5432/agentzed")
+        os.getenv("DATABASE_URL","postgresql://postgres:Database%40123@localhost:5432/agent_zed_app")
     )
 
 def init_db():
