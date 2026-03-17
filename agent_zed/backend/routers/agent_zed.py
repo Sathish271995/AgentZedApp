@@ -88,14 +88,16 @@ class CommentUpdate(BaseModel):
 
 # ── Webhook signature verification ───────────────────────────────────────────
 def _verify(payload: bytes, sig: str) -> bool:
-    secret = os.getenv("GITHUB_WEBHOOK_SECRET", "")
-    if not secret:
-        logger.warning("GITHUB_WEBHOOK_SECRET not set — skipping signature check (dev mode)")
+    secret = os.getenv("GITHUB_WEBHOOK_SECRET", "").strip()
+    if not secret or secret == "your_webhook_secret_here":
+        logger.warning("GITHUB_WEBHOOK_SECRET not configured — skipping signature check (dev mode)")
         return True
+    if not sig:
+        return False
     expected = "sha256=" + hmac.new(
         secret.encode("utf-8"), payload, hashlib.sha256
     ).hexdigest()
-    return hmac.compare_digest(expected, sig or "")
+    return hmac.compare_digest(expected, sig)
 
 
 # ── Fetch real files from GitHub API ─────────────────────────────────────────
